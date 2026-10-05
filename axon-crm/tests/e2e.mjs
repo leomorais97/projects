@@ -254,6 +254,12 @@ await goto(page, '#/insights');
 await page.waitForSelector('.chart-card');
 ok(await page.locator('.stat').count() === 6, 'insights: 6 KPIs');
 ok(await page.locator('.chart-card').count() === 6, 'insights: 6 gráficos');
+{
+  const widths = await page.locator('.hbar').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width));
+  ok(widths.length > 10 && widths.some((w) => w > 100), 'barras horizontais têm largura proporcional ao valor (maior: ' + Math.round(Math.max(...widths)) + 'px)');
+  const heights = await page.locator('.cbar').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+  ok(heights.some((h) => h > 50), 'colunas têm altura proporcional ao valor');
+}
 await page.locator('.cgroup').first().hover();
 await page.waitForTimeout(120);
 ok(await page.locator('.chart-tip:not(.hidden)').count() === 1, 'tooltip aparece ao passar o mouse nas colunas');
@@ -495,6 +501,35 @@ await page.click('.modal button[type=submit]');
 await page.waitForTimeout(250);
 ok(await page.locator('.toast.error').count() > 0, 'backup inválido mostra erro e não altera os dados');
 ok((await state(page)).deals.length > 5, 'dados preservados após backup inválido');
+
+section('Foco preso no modal e backup incompleto');
+await goto(page, '#/pipeline');
+await page.keyboard.press('n');
+await page.waitForSelector('.modal');
+let escaped = false;
+for (let i = 0; i < 40 && !escaped; i++) {
+  await page.keyboard.press('Tab');
+  escaped = !(await page.evaluate(() => document.querySelector('.modal').contains(document.activeElement)));
+}
+ok(!escaped, 'Tab percorre 40 vezes sem o foco sair do modal');
+await page.keyboard.press('Escape');
+const minimal = { v: 1, pipelines: [{ id: 'p1', name: 'P', stages: [{ id: 's1', name: 'S1', prob: 10, rot: 7 }] }], deals: [{ id: 'd1', title: 'Mínimo', value: 100, stageId: 'fantasma' }] };
+await goto(page, '#/settings/data');
+await page.setInputFiles('input[aria-label="Arquivo de backup"]', { name: 'minimo.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(minimal)) });
+await page.waitForSelector('.modal');
+await page.click('.modal button[type=submit]');
+await page.waitForTimeout(300);
+{
+  const st = await state(page);
+  ok(st.deals.length === 1 && st.deals[0].stageId === 's1' && Array.isArray(st.deals[0].history) && Array.isArray(st.deals[0].products), 'backup incompleto é normalizado (etapa inexistente, histórico e produtos ausentes)');
+  await goto(page, '#/deal/d1');
+  await page.waitForSelector('.deal-page');
+  ok(await page.locator('.deal-h1').innerText() === 'Mínimo', 'negócio de backup incompleto abre sem erro');
+  await goto(page, '#/pipeline');
+  await goto(page, '#/insights');
+  await page.waitForSelector('.chart-card');
+  ok(true, 'insights renderiza com dados mínimos');
+}
 await ctx.close();
 
 /* ============ 8. Mobile ============ */

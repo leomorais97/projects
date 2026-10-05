@@ -29,7 +29,18 @@
   /* ---------- modal ---------- */
   var modalStack = [];
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && modalStack.length) { e.preventDefault(); modalStack[modalStack.length - 1].close(); }
+    if (!modalStack.length) return;
+    var top = modalStack[modalStack.length - 1];
+    if (e.key === 'Escape') { e.preventDefault(); top.close(); }
+    else if (e.key === 'Tab') {
+      // mantém o foco dentro do modal (acessibilidade)
+      var f = Array.prototype.filter.call(top.el.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'), function (x) { return x.offsetParent !== null; });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (!top.el.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
   });
   function modal(o) {
     var prev = document.activeElement;

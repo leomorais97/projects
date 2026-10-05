@@ -24,6 +24,25 @@
     if (!s.users.length) s.users = d.users;
     if (!s.users.some(function (x) { return x.id === s.currentUser; })) s.currentUser = s.users[0].id;
     if (!s.pipelines.length) s.pipelines = d.pipelines;
+    s.pipelines.forEach(function (pl) {
+      if (!Array.isArray(pl.stages) || !pl.stages.length) pl.stages = [{ id: u.uid('st'), name: 'Etapa 1', prob: 10, rot: 7 }];
+    });
+    // backups antigos/editados à mão: garante os campos que as telas assumem existir
+    var stageIds = new Set(), now = u.nowIso();
+    s.pipelines.forEach(function (pl) { pl.stages.forEach(function (st) { stageIds.add(st.id); }); });
+    s.deals.forEach(function (d, i) {
+      if (!stageIds.has(d.stageId)) {
+        var pl = s.pipelines.filter(function (p) { return p.id === d.pipelineId; })[0] || s.pipelines[0];
+        d.pipelineId = pl.id; d.stageId = pl.stages[0].id;
+      }
+      d.createdAt = d.createdAt || now;
+      d.stageEnteredAt = d.stageEnteredAt || d.createdAt;
+      if (!Array.isArray(d.history) || !d.history.length) d.history = [{ stageId: d.stageId, at: d.createdAt }];
+      if (!Array.isArray(d.products)) d.products = [];
+      if (typeof d.order !== 'number') d.order = i;
+      if (d.status !== 'won' && d.status !== 'lost') d.status = 'open';
+      d.title = d.title || 'Negócio sem título';
+    });
     s.v = 1;
     return s;
   }

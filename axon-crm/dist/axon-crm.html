@@ -589,7 +589,7 @@ table.table { width: 100%; border-collapse: collapse; }
 .cgroup:hover, .cgroup:focus-visible { background: color-mix(in srgb, var(--chart-1) 8%, transparent); }
 .cbar { width: min(24px, 36%); border-radius: 4px 4px 0 0; min-height: 2px; }
 .cxlabels { display: flex; margin-top: 6px; }
-.cx { flex: 1; text-align: center; font-size: 11.5px; line-height: 1.2; color: var(--muted); min-width: 0; overflow-wrap: anywhere; padding: 0 1px; }
+.cx { flex: 1; text-align: center; font-size: 11px; line-height: 1.2; color: var(--muted); min-width: 0; padding: 0 1px; }
 .legend { display: flex; gap: 16px; margin-top: 12px; padding-left: 0; font-size: 12.5px; color: var(--text-2); }
 .legend .lg { display: inline-flex; align-items: center; gap: 6px; }
 .legend .lg-key { width: 10px; height: 10px; border-radius: 3px; }
@@ -650,7 +650,12 @@ table.table { width: 100%; border-collapse: collapse; }
         var v = attrs[k];
         if (v == null || v === false) return;
         if (k === 'class') el.className = v;
-        else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+        else if (k === 'style' && typeof v === 'object') {
+          Object.keys(v).forEach(function (sk) {
+            if (sk.indexOf('--') === 0) el.style.setProperty(sk, v[sk]); // variáveis CSS exigem setProperty
+            else el.style[sk] = v[sk];
+          });
+        }
         else if (k === 'dataset') Object.assign(el.dataset, v);
         else if (k.slice(0, 2) === 'on' && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
         else if (k === 'value' || k === 'checked' || k === 'selected') (deferred = deferred || {})[k] = v;
@@ -1258,6 +1263,25 @@ table.table { width: 100%; border-collapse: collapse; }
     if (!s.users.length) s.users = d.users;
     if (!s.users.some(function (x) { return x.id === s.currentUser; })) s.currentUser = s.users[0].id;
     if (!s.pipelines.length) s.pipelines = d.pipelines;
+    s.pipelines.forEach(function (pl) {
+      if (!Array.isArray(pl.stages) || !pl.stages.length) pl.stages = [{ id: u.uid('st'), name: 'Etapa 1', prob: 10, rot: 7 }];
+    });
+    // backups antigos/editados à mão: garante os campos que as telas assumem existir
+    var stageIds = new Set(), now = u.nowIso();
+    s.pipelines.forEach(function (pl) { pl.stages.forEach(function (st) { stageIds.add(st.id); }); });
+    s.deals.forEach(function (d, i) {
+      if (!stageIds.has(d.stageId)) {
+        var pl = s.pipelines.filter(function (p) { return p.id === d.pipelineId; })[0] || s.pipelines[0];
+        d.pipelineId = pl.id; d.stageId = pl.stages[0].id;
+      }
+      d.createdAt = d.createdAt || now;
+      d.stageEnteredAt = d.stageEnteredAt || d.createdAt;
+      if (!Array.isArray(d.history) || !d.history.length) d.history = [{ stageId: d.stageId, at: d.createdAt }];
+      if (!Array.isArray(d.products)) d.products = [];
+      if (typeof d.order !== 'number') d.order = i;
+      if (d.status !== 'won' && d.status !== 'lost') d.status = 'open';
+      d.title = d.title || 'Negócio sem título';
+    });
     s.v = 1;
     return s;
   }
@@ -1713,7 +1737,18 @@ table.table { width: 100%; border-collapse: collapse; }
   /* ---------- modal ---------- */
   var modalStack = [];
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && modalStack.length) { e.preventDefault(); modalStack[modalStack.length - 1].close(); }
+    if (!modalStack.length) return;
+    var top = modalStack[modalStack.length - 1];
+    if (e.key === 'Escape') { e.preventDefault(); top.close(); }
+    else if (e.key === 'Tab') {
+      // mantém o foco dentro do modal (acessibilidade)
+      var f = Array.prototype.filter.call(top.el.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'), function (x) { return x.offsetParent !== null; });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (!top.el.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
   });
   function modal(o) {
     var prev = document.activeElement;
