@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Axon CRM</title>
+<meta name="description" content="CRM de vendas da Axon Tech — pipeline de criação de sites.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23256abf'/%3E%3Cg fill='none' stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='16' cy='16' r='3.5'/%3E%3Cpath d='M8 8l5.5 5.5M24 9l-5 5M16 20.5V25'/%3E%3C/g%3E%3C/svg%3E">
+<script>
+  // aplica o tema antes da primeira pintura (evita "flash" claro no modo escuro)
+  (function () {
+    try {
+      var p = JSON.parse(localStorage.getItem('axoncrm.prefs') || '{}').theme || 'auto';
+      var dark = p === 'dark' || (p === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    } catch (e) { document.documentElement.dataset.theme = 'light'; }
+  })();
+</script>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/views.css">
+</head>
+<body>
+<div id="app"></div>
+<noscript>O Axon CRM precisa de JavaScript para funcionar.</noscript>
+<script src="js/util.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/data.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/forms.js"></script>
+<script src="js/parts.js"></script>
+<script src="js/views/pipeline.js"></script>
+<script src="js/views/deal.js"></script>
+<script src="js/views/leads.js"></script>
+<script src="js/views/activities.js"></script>
+<script src="js/views/contacts.js"></script>
+<script src="js/views/products.js"></script>
+<script src="js/views/insights.js"></script>
+<script src="js/views/settings.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
