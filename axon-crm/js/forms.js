@@ -8,7 +8,7 @@
   function listOpts(name, blank) {
     return [{ value: '', label: blank || '—' }].concat(S.s.lists[name].map(function (x) { return { value: x.id, label: x.name }; }));
   }
-  function go(hash) { location.hash = hash; }
+  function go(hash) { AX.nav(hash); }
   function row(children) { return h('div', { class: 'form-grid' }, children); }
 
   function orgPicker(value, onChange) {

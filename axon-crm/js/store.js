@@ -1,16 +1,18 @@
-/* Axon CRM — store: estado único, persistência (localStorage), índices, selectors e mutações.
-   Para trocar por um backend, basta reimplementar load()/persist() (ver "adaptador de storage"). */
+/* Axon CRM — store: estado único, persistência plugável, índices, selectors e mutações.
+   Backend padrão: localStorage. js/cloud.js troca por o armazenamento `db` do Claude quando a página roda como artefato. */
 (function (AX) {
   'use strict';
   var u = AX.u;
   var KEY = 'axoncrm.v1', PREF_KEY = 'axoncrm.prefs';
   var state, idx = null, listeners = [], saveTimer = null;
 
-  /* ---------- adaptador de storage ---------- */
-  var storage = {
+  /* ---------- backend de persistência ---------- */
+  var browserBackend = {
+    name: 'browser',
     read: function () { try { return localStorage.getItem(KEY); } catch (e) { return null; } },
-    write: function (txt) { localStorage.setItem(KEY, txt); }
+    write: function (st) { localStorage.setItem(KEY, JSON.stringify(st)); }
   };
+  var backend = browserBackend;
 
   function migrate(s) {
     var d = AX.data.defaults();
@@ -47,17 +49,22 @@
     return s;
   }
   function load() {
-    var raw = storage.read(), parsed = null;
+    var raw = browserBackend.read(), parsed = null;
     if (raw) { try { parsed = JSON.parse(raw); } catch (e) { parsed = null; } }
     state = migrate(parsed);
     idx = null;
   }
   function persist() {
-    try { storage.write(JSON.stringify(state)); }
+    try { backend.write(state); }
     catch (e) {
-      if (AX.ui) AX.ui.toast('Não foi possível salvar no navegador (armazenamento cheio ou bloqueado). Exporte um backup em Configurações → Dados.', { kind: 'error' });
+      if (AX.ui) AX.ui.toast('Não foi possível salvar no navegador (armazenamento cheio ou bloqueado). Exporte um backup em Configurações → Dados e backup.', { kind: 'error' });
     }
   }
+  // troca o destino dos dados (cloud.js); o backend recebe o estado inteiro a cada alteração (já com debounce)
+  function setBackend(b) { backend = b || browserBackend; }
+  // substitui o estado inteiro (carga remota) mantendo ouvintes e persistência
+  function replaceState(obj) { state = migrate(obj); idx = null; commit(); }
+  function markBackup() { state.lastBackupAt = u.nowIso(); commit(); }
   function save() { clearTimeout(saveTimer); saveTimer = setTimeout(persist, 120); }
   function flush() { if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; persist(); } }
   window.addEventListener('pagehide', flush);
@@ -67,7 +74,7 @@
   function subscribe(fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (x) { return x !== fn; }); }; }
   // outra aba alterou os dados → recarrega
   window.addEventListener('storage', function (e) {
-    if (e.key === KEY && e.newValue) { load(); listeners.forEach(function (fn) { fn(); }); }
+    if (backend === browserBackend && e.key === KEY && e.newValue) { load(); listeners.forEach(function (fn) { fn(); }); }
   });
 
   /* ---------- preferências de interface (não fazem parte dos dados) ---------- */
@@ -430,7 +437,7 @@
   function setProfile(patch) { Object.assign(state.profile, patch); commit(); }
 
   /* ---------- dados: backup, restauração, exemplo ---------- */
-  function exportJSON() { state.lastBackupAt = u.nowIso(); save(); listeners.forEach(function (fn) { fn(); }); return JSON.stringify(state, null, 2); }
+  function exportJSON() { return JSON.stringify(state, null, 2); }
   function importJSON(text) {
     var parsed;
     try { parsed = JSON.parse(text); } catch (e) { return { ok: false, error: 'O arquivo não é um JSON válido.' }; }
@@ -461,7 +468,8 @@
     addStage: addStage, updateStage: updateStage, moveStage: moveStage, deleteStage: deleteStage,
     listAdd: listAdd, listUpdate: listUpdate, listRemove: listRemove,
     addUser: addUser, updateUser: updateUser, removeUser: removeUser, setProfile: setProfile,
-    exportJSON: exportJSON, importJSON: importJSON, reset: reset, snapshot: snapshot, restore: restore, log: log
+    exportJSON: exportJSON, markBackup: markBackup, importJSON: importJSON, reset: reset, snapshot: snapshot, restore: restore, log: log,
+    setBackend: setBackend, replaceState: replaceState, get mode() { return backend.name; }
   };
   load();
 })(window.AX = window.AX || {});

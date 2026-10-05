@@ -1,20 +1,4 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Axon CRM</title>
-<meta name="description" content="CRM de vendas da Axon Tech — pipeline de criação de sites.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23256abf'/%3E%3Cg fill='none' stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='16' cy='16' r='3.5'/%3E%3Cpath d='M8 8l5.5 5.5M24 9l-5 5M16 20.5V25'/%3E%3C/g%3E%3C/svg%3E">
-<script>
-  // aplica a escolha explícita de tema antes da primeira pintura (evita "flash"); no modo automático o CSS decide
-  (function () {
-    try {
-      var p = JSON.parse(localStorage.getItem('axoncrm.prefs') || '{}').theme;
-      if (p === 'dark' || p === 'light') { document.documentElement.dataset.theme = p; document.documentElement.dataset.axonTheme = '1'; }
-    } catch (e) { /* sem armazenamento: segue o tema do sistema */ }
-  })();
-</script>
 <style>
 /* Axon CRM — design tokens. O tema escuro vale via prefers-color-scheme (sem data-theme) ou data-theme="dark"; "light" força o claro. */
 :root {
@@ -165,8 +149,7 @@
   --ord-4: #2a78d6;
   --ord-5: #1c5cab;
 }
-</style>
-<style>
+
 /* Axon CRM — base, layout e componentes */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; }
@@ -443,8 +426,7 @@ table.table { width: 100%; border-collapse: collapse; }
 .ic.spin { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 900px) { .sync span { display: none; } .sync { padding: 0 8px; } .sync.error span { display: inline; } }
-</style>
-<style>
+
 /* Axon CRM — estilos das telas */
 .stack { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .stack-sm { display: flex; flex-direction: column; gap: 10px; }
@@ -680,10 +662,16 @@ table.table { width: 100%; border-collapse: collapse; }
   .gl-label { left: -34px; width: 28px; }
 }
 </style>
-</head>
-<body>
+<script>
+  // aplica a escolha explícita de tema antes da primeira pintura (evita "flash"); no modo automático o CSS decide
+  (function () {
+    try {
+      var p = JSON.parse(localStorage.getItem('axoncrm.prefs') || '{}').theme;
+      if (p === 'dark' || p === 'light') { document.documentElement.dataset.theme = p; document.documentElement.dataset.axonTheme = '1'; }
+    } catch (e) { /* sem armazenamento: segue o tema do sistema */ }
+  })();
+</script>
 <div id="app"></div>
-<noscript>O Axon CRM precisa de JavaScript para funcionar.</noscript>
 <script>
 /* Axon CRM — utilitários (DOM, datas, moeda, CSV). Sem dependências. */
 (function (AX) {
@@ -4672,5 +4660,3 @@ table.table { width: 100%; border-collapse: collapse; }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })(window.AX = window.AX || {});
 </script>
-</body>
-</html>

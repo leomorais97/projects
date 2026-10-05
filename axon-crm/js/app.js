@@ -21,24 +21,45 @@
 
   var els = {}, current = { name: 'pipeline', arg: null, query: {} }, renderQueued = false;
 
-  /* ---------- tema ---------- */
+  /* ---------- tema ----------
+     "auto" não escreve data-theme: o CSS segue prefers-color-scheme ou o data-theme que o host (Claude) definir.
+     Só uma escolha explícita (botão de tema) grava data-theme. */
   var mql = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-  function resolvedTheme() { var p = S.prefs.get('theme', 'auto'); return p === 'auto' ? (mql && mql.matches ? 'dark' : 'light') : p; }
+  var root$ = document.documentElement;
+  function resolvedTheme() {
+    var p = S.prefs.get('theme', 'auto');
+    if (p !== 'auto') return p;
+    return root$.dataset.theme || (mql && mql.matches ? 'dark' : 'light');
+  }
   function applyTheme() {
-    document.documentElement.dataset.theme = resolvedTheme();
-    if (els.themeBtn) { u.clear(els.themeBtn); els.themeBtn.appendChild(icon(resolvedTheme() === 'dark' ? 'sun' : 'moon', 17)); els.themeBtn.setAttribute('aria-label', resolvedTheme() === 'dark' ? 'Usar tema claro' : 'Usar tema escuro'); }
+    var p = S.prefs.get('theme', 'auto');
+    if (p === 'auto') { if (root$.dataset.axonTheme) { delete root$.dataset.theme; delete root$.dataset.axonTheme; } }
+    else { root$.dataset.theme = p; root$.dataset.axonTheme = '1'; }
+    var dark = resolvedTheme() === 'dark';
+    if (els.themeBtn) { u.clear(els.themeBtn); els.themeBtn.appendChild(icon(dark ? 'sun' : 'moon', 17)); els.themeBtn.setAttribute('aria-label', dark ? 'Usar tema claro' : 'Usar tema escuro'); }
   }
   if (mql && mql.addEventListener) mql.addEventListener('change', function () { applyTheme(); scheduleRender(); });
+  // o host pode trocar data-theme a qualquer momento
+  if (window.MutationObserver) new MutationObserver(function () { if (S.prefs.get('theme', 'auto') === 'auto') applyTheme(); }).observe(root$, { attributes: true, attributeFilter: ['data-theme'] });
   function toggleTheme() { S.prefs.set('theme', resolvedTheme() === 'dark' ? 'light' : 'dark'); applyTheme(); scheduleRender(); }
 
-  /* ---------- rota ---------- */
+  /* ---------- rota ----------
+     A rota fica em memória (route) e é espelhada em location.hash quando possível — assim a navegação
+     funciona mesmo se o ambiente (iframe do Claude) ignorar mudanças de hash. */
+  var route = location.hash || '#/pipeline';
   function parseHash() {
-    var raw = location.hash.replace(/^#\/?/, ''), qs = {};
+    var raw = route.replace(/^#\/?/, ''), qs = {};
     var qi = raw.indexOf('?');
     if (qi >= 0) { raw.slice(qi + 1).split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) qs[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || ''); }); raw = raw.slice(0, qi); }
     var parts = raw.split('/').filter(Boolean);
     return { name: parts[0] || 'pipeline', arg: parts[1] ? decodeURIComponent(parts[1]) : null, query: qs };
   }
+  AX.nav = function (hash) {
+    route = hash;
+    ui.closePopover();
+    try { if (location.hash !== hash) location.hash = hash; } catch (e) { /* ambiente sem hash: segue em memória */ }
+    scheduleRender();
+  };
   function scheduleRender() {
     if (renderQueued) return;
     renderQueued = true;
@@ -76,7 +97,7 @@
     try { view(els.view, { arg: r.arg, query: r.query }); }
     catch (e) {
       console.error(e);
-      els.view.appendChild(ui.empty({ icon: 'alert-triangle', title: 'Algo deu errado ao abrir esta tela', text: String(e && e.message || e), action: { label: 'Voltar ao pipeline', onClick: function () { location.hash = '#/pipeline'; } } }));
+      els.view.appendChild(ui.empty({ icon: 'alert-triangle', title: 'Algo deu errado ao abrir esta tela', text: String(e && e.message || e), action: { label: 'Voltar ao pipeline', onClick: function () { AX.nav('#/pipeline'); } } }));
     }
     if (st) restoreUi(st, sameRoute);
     if (!sameRoute) els.view.scrollTop = 0;
@@ -110,7 +131,7 @@
     var hasData = s.deals.length + s.leads.length + s.persons.length > 0;
     var ref = s.lastBackupAt || s.createdAt;
     var dismissed = S.prefs.get('bannerDismissed', 0);
-    if (!hasData || !ref || u.daysSince(ref) < 7 || Date.now() - dismissed < 3 * 864e5) return;
+    if (S.mode === 'cloud' || !hasData || !ref || u.daysSince(ref) < 7 || Date.now() - dismissed < 3 * 864e5) return;
     els.banner.appendChild(h('div', { class: 'banner' }, icon('alert-triangle', 16),
       h('span', null, s.lastBackupAt ? 'Seu último backup foi ' + u.timeAgo(s.lastBackupAt) + '.' : 'Você ainda não fez backup dos seus dados.', ' Eles ficam salvos neste navegador — exporte uma cópia para não perder nada.'),
       h('span', { class: 'spacer' }),
@@ -118,10 +139,25 @@
       h('button', { class: 'btn sm ghost', type: 'button', 'aria-label': 'Dispensar', onclick: function () { S.prefs.set('bannerDismissed', Date.now()); updateBanner(); } }, icon('x', 14))));
   }
   AX.exportBackup = function () {
-    var txt = S.exportJSON();
-    u.download('axon-crm-backup-' + u.today() + '.json', txt, 'application/json');
-    ui.toast('Backup exportado', { kind: 'success' });
+    u.download('axon-crm-backup-' + u.today() + '.json', S.exportJSON(), 'application/json').then(function (ok) {
+      if (!ok) return;
+      S.markBackup();
+      ui.toast('Backup exportado', { kind: 'success' });
+    });
   };
+
+  /* ---------- indicador de sincronização (modo nuvem) ---------- */
+  var SYNC_TEXT = { saving: 'Salvando…', saved: 'Salvo na nuvem', error: 'Não salvo — tentar de novo' };
+  function drawSync(st, err) {
+    if (!els.sync) return;
+    u.clear(els.sync);
+    if (!SYNC_TEXT[st] || S.mode !== 'cloud') { els.sync.className = 'sync hidden'; return; }
+    els.sync.className = 'sync ' + st;
+    var tip = st === 'error' ? 'Falha ao salvar' + (err && err.message ? ': ' + err.message : '') + '. Clique para tentar de novo.' : st === 'saved' ? 'Seus dados estão salvos na sua conta do Claude.' : 'Gravando alterações…';
+    els.sync.setAttribute('data-tip', tip);
+    els.sync.appendChild(icon(st === 'error' ? 'alert-triangle' : st === 'saved' ? 'cloud' : 'refresh', 14, st === 'saving' ? 'spin' : ''));
+    els.sync.appendChild(h('span', null, SYNC_TEXT[st]));
+  }
 
   /* ---------- busca global ---------- */
   var searchSel = 0, searchItems = [];
@@ -159,7 +195,7 @@
         icon(it.icon, 16), h('div', { style: { minWidth: 0 } }, h('div', { class: 'truncate' }, it.title), it.sub ? h('div', { class: 'sub truncate' }, it.sub) : null)));
     });
   }
-  function openResult(it) { els.searchInput.value = ''; closeSearch(); els.searchInput.blur(); location.hash = it.href; }
+  function openResult(it) { els.searchInput.value = ''; closeSearch(); els.searchInput.blur(); AX.nav(it.href); }
 
   /* ---------- novo (+) ---------- */
   function quickAddMenu(anchor) {
@@ -190,7 +226,7 @@
       if (n) S.updateUser(S.s.currentUser, { name: n });
       S.setProfile({ onboarded: true, company: company.value.trim() || 'Axon Tech' });
       if (demo) S.reset(true);
-      location.hash = '#/pipeline';
+      AX.nav('#/pipeline');
     }
     var m = ui.modal({
       title: 'Bem-vindo ao Axon CRM', size: 'md',
@@ -230,13 +266,14 @@
     els.avatarBtn = h('button', { class: 'btn ghost icon', type: 'button', 'aria-label': 'Conta', style: { borderRadius: '50%' }, onclick: function () {
       ui.menu(els.avatarBtn, [
         { head: q.me().name },
-        { label: 'Configurações', icon: 'settings', onClick: function () { location.hash = '#/settings'; } },
+        { label: 'Configurações', icon: 'settings', onClick: function () { AX.nav('#/settings'); } },
         { label: resolvedTheme() === 'dark' ? 'Tema claro' : 'Tema escuro', icon: resolvedTheme() === 'dark' ? 'sun' : 'moon', onClick: toggleTheme },
         { label: 'Exportar backup', icon: 'download', onClick: AX.exportBackup },
         { label: 'Importar leads (CSV)', icon: 'upload', onClick: function () { AX.forms.importLeads(); } }
       ], { align: 'right' });
     } }, h('span'));
     els.banner = h('div');
+    els.sync = h('button', { type: 'button', class: 'sync hidden', onclick: function () { if (AX.cloud.status === 'error') AX.cloud.retry(); } });
     els.view = h('main', { class: 'page', id: 'view' });
     var addBtn = h('div', { class: 'btn-split' },
       h('button', { class: 'btn primary', type: 'button', onclick: function () { AX.forms.deal({ defaults: current.name === 'pipeline' ? {} : {} }); } }, icon('plus', 16), 'Negócio'),
@@ -250,7 +287,7 @@
         els.banner,
         h('header', { class: 'topbar' },
           h('div', { class: 'search' }, icon('search', 16, 'ic-lead'), els.searchInput, h('kbd', null, '/'), els.searchPanel),
-          h('span', { class: 'spacer' }), addBtn, els.themeBtn, els.avatarBtn),
+          h('span', { class: 'spacer' }), els.sync, addBtn, els.themeBtn, els.avatarBtn),
         els.view)));
   }
 
@@ -261,16 +298,29 @@
     else if (e.key === 'n' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey && !document.querySelector('.modal-backdrop')) { e.preventDefault(); AX.forms.deal({}); }
   });
 
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#/"]');
+    if (!a || e.defaultPrevented || e.button || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    e.preventDefault();
+    AX.nav(a.getAttribute('href'));
+  });
+
   AX.rerender = scheduleRender;
   AX.current = function () { return current; };
 
   function boot() {
     build();
     applyTheme();
-    window.addEventListener('hashchange', function () { ui.closePopover(); scheduleRender(); });
-    S.subscribe(scheduleRender);
-    render();
-    if (!S.s.profile.onboarded) onboarding();
+    window.addEventListener('hashchange', function () { if (location.hash && location.hash !== route) { route = location.hash; ui.closePopover(); scheduleRender(); } });
+    // enquanto a nuvem responde mostra uma tela de carregamento (no navegador comum isso é instantâneo)
+    if (u.hasHost()) els.view.appendChild(ui.empty({ icon: 'cloud', title: 'Carregando seus dados…', text: 'Conectando ao armazenamento seguro da sua conta.' }));
+    AX.ready.then(function (mode) {
+      S.subscribe(scheduleRender);
+      AX.cloud.onStatus(drawSync);
+      if (mode === 'browser-fallback') ui.toast('Não consegui acessar a nuvem agora; usando o armazenamento deste navegador.', { kind: 'error', duration: 7000 });
+      render();
+      if (!S.s.profile.onboarded) onboarding();
+    });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })(window.AX = window.AX || {});

@@ -191,12 +191,27 @@
     rows.forEach(function (r) { lines.push(columns.map(function (c) { return csvCell(c.get(r)); }).join(';')); });
     return '﻿' + lines.join('\r\n');
   }
+  // Resolve true quando o arquivo foi entregue/salvo. Dentro do Claude (artefato) downloads diretos são bloqueados:
+  // usa a capability `downloads`, que pede confirmação ao usuário.
+  function hasHost() { return !!(window.claude && typeof window.claude.use === 'function'); }
   function download(filename, content, mime) {
-    var blob = new Blob([content], { type: mime || 'text/plain;charset=utf-8' });
-    var url = URL.createObjectURL(blob);
-    var a = h('a', { href: url, download: filename });
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+    function viaAnchor() {
+      var blob = new Blob([content], { type: mime || 'text/plain;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var a = h('a', { href: url, download: filename });
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+      return true;
+    }
+    if (!hasHost()) return Promise.resolve(viaAnchor());
+    return window.claude.use('downloads').then(function (d) {
+      if (!d) { if (AX.ui) AX.ui.toast('Salvar arquivos não está disponível neste ambiente.', { kind: 'error' }); return false; }
+      return d.save({ filename: filename, data: content }).then(function () { return true; }, function (e) {
+        if (e && e.code === 'declined') return false;
+        if (AX.ui) AX.ui.toast('Não foi possível salvar o arquivo (' + ((e && e.code) || 'erro') + ').', { kind: 'error' });
+        return false;
+      });
+    });
   }
 
   AX.u = {
@@ -207,7 +222,7 @@
     MONTHS: MONTHS, MONTHS_LONG: MONTHS_LONG, WEEKDAYS: WEEKDAYS,
     money: money, pct: pct, num: num, parseMoney: parseMoney,
     safeUrl: safeUrl, hostname: hostname, waLink: waLink,
-    parseCSV: parseCSV, toCSV: toCSV, download: download
+    parseCSV: parseCSV, toCSV: toCSV, download: download, hasHost: hasHost
   };
   AX.h = h;
   AX.views = AX.views || {}; // telas registram-se aqui (js/views/*.js)

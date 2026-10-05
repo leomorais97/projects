@@ -1,4 +1,4 @@
-/* Axon CRM — design tokens. O tema é sempre resolvido via [data-theme] (ver js/app.js). */
+/* Axon CRM — design tokens. O tema escuro vale via prefers-color-scheme (sem data-theme) ou data-theme="dark"; "light" força o claro. */
 :root {
   color-scheme: light;
 
@@ -53,6 +53,54 @@
   --ord-3: #2a78d6;
   --ord-4: #1c5cab;
   --ord-5: #104281;
+}
+
+/* tema escuro do sistema (quando nenhum data-theme foi definido) — mesmos valores do bloco [data-theme="dark"] */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+  
+    --bg: #0b0e14;
+    --surface: #151a23;
+    --surface-2: #1b212c;
+    --surface-3: #252c39;
+    --border: #272e3b;
+    --border-strong: #3a4352;
+  
+    --text: #eceff5;
+    --text-2: #b3bacb;
+    --muted: #838ca2;
+  
+    --accent: #256abf;
+    --accent-hover: #2a78d6;
+    --accent-soft: #15253b;
+    --accent-text: #7db2f0;
+    --on-accent: #ffffff;
+  
+    --good-text: #4fc74f;
+    --good-soft: #10261a;
+    --warn-text: #f3bf4a;
+    --warn-soft: #2b2310;
+    --crit-text: #f28787;
+    --crit-soft: #2e1717;
+  
+    --side-bg: #080b12;
+  
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4);
+    --focus: 0 0 0 3px rgba(61, 135, 229, 0.4);
+  
+    --chart-1: #3987e5;
+    --chart-muted: #98a1b4;
+    --chart-grid: #232a37;
+    --chart-axis: #334052;
+    /* rampa ordinal no escuro (validada em #151a23): do mais claro ao mais escuro */
+    --ord-1: #b7d3f6;
+    --ord-2: #86b6ef;
+    --ord-3: #5598e7;
+    --ord-4: #2a78d6;
+    --ord-5: #1c5cab;
+  }
 }
 
 :root[data-theme="dark"] {

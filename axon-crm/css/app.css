@@ -26,7 +26,7 @@ button { cursor: pointer; }
 .hidden { display: none !important; }
 
 /* ---------- shell ---------- */
-.app { display: grid; grid-template-columns: 232px minmax(0, 1fr); height: 100vh; }
+.app { display: grid; grid-template-columns: 232px minmax(0, 1fr); height: 100%; }
 .sidebar {
   background: var(--side-bg); color: var(--side-text);
   display: flex; flex-direction: column; padding: 14px 10px; gap: 2px; overflow-y: auto;
@@ -53,7 +53,7 @@ button { cursor: pointer; }
 .nav-badge.crit { background: var(--crit); }
 .side-foot { margin-top: auto; padding-top: 12px; display: flex; flex-direction: column; gap: 2px; }
 
-.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100vh; }
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; }
 .topbar {
   height: 58px; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 20px;
   background: var(--surface); border-bottom: 1px solid var(--border);
@@ -261,8 +261,16 @@ table.table { width: 100%; border-collapse: collapse; }
   .main { grid-row: 1; height: auto; min-height: 0; }
   .topbar { padding: 0 12px; }
   .search kbd { display: none; }
-  .page { padding: 16px 12px 30px; }
+  .page { padding: 16px 16px 30px; }
   .form-grid { grid-template-columns: 1fr; }
   .modal-backdrop { padding-top: 2vh; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* indicador de sincronização (modo nuvem) */
+.sync { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 15px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); font-size: 12.5px; font-weight: 560; white-space: nowrap; cursor: default; }
+.sync.saved .ic { color: var(--good-text); }
+.sync.error { background: var(--crit-soft); border-color: transparent; color: var(--crit-text); cursor: pointer; }
+.ic.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 900px) { .sync span { display: none; } .sync { padding: 0 8px; } .sync.error span { display: inline; } }

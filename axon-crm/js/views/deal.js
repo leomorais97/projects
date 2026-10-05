@@ -194,7 +194,7 @@
   /* ---------- página ---------- */
   AX.views.deal = function (root, params) {
     var d = q.deal(params.arg);
-    if (!d) { root.appendChild(ui.empty({ icon: 'search', title: 'Negócio não encontrado', text: 'Ele pode ter sido excluído.', action: { label: 'Voltar ao pipeline', onClick: function () { location.hash = '#/pipeline'; } } })); return; }
+    if (!d) { root.appendChild(ui.empty({ icon: 'search', title: 'Negócio não encontrado', text: 'Ele pode ter sido excluído.', action: { label: 'Voltar ao pipeline', onClick: function () { AX.nav('#/pipeline'); } } })); return; }
     if (lastDeal !== d.id) { dealTab = 'focus'; composeMode = 'note'; lastDeal = d.id; }
     var org = q.org(d.orgId), person = q.person(d.personId), rot = q.isRotting(d);
 
@@ -204,12 +204,12 @@
         { label: 'Duplicar', icon: 'copy', onClick: function () {
           var c = S.addDeal({ title: d.title + ' (cópia)', value: d.value, mrr: d.mrr, pipelineId: d.pipelineId, orgId: d.orgId, personId: d.personId, ownerId: d.ownerId, labelId: d.labelId, sourceId: d.sourceId, projectTypeId: d.projectTypeId, siteUrl: d.siteUrl, expectedClose: d.expectedClose });
           if (d.products.length) S.setDealProducts(c.id, d.products.map(function (l) { return Object.assign({}, l, { id: u.uid('dp') }); }), true);
-          ui.toast('Negócio duplicado', { kind: 'success' }); location.hash = '#/deal/' + c.id;
+          ui.toast('Negócio duplicado', { kind: 'success' }); AX.nav('#/deal/' + c.id);
         } },
         { sep: true },
         { label: 'Excluir negócio', icon: 'trash', danger: true, onClick: function () {
           ui.confirm({ title: 'Excluir negócio', message: 'Excluir “' + d.title + '” e todas as suas atividades e notas?', confirmText: 'Excluir', danger: true }).then(function (ok) {
-            if (ok) { ui.withUndo('Negócio excluído', function () { S.deleteDeal(d.id); }); location.hash = '#/pipeline'; }
+            if (ok) { ui.withUndo('Negócio excluído', function () { S.deleteDeal(d.id); }); AX.nav('#/pipeline'); }
           });
         } }
       ], { align: 'right' });

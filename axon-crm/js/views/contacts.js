@@ -98,7 +98,7 @@
 
   AX.views.person = function (root, params) {
     var p = q.person(params.arg);
-    if (!p) { root.appendChild(ui.empty({ icon: 'search', title: 'Pessoa não encontrada', action: { label: 'Voltar', onClick: function () { location.hash = '#/people'; } } })); return; }
+    if (!p) { root.appendChild(ui.empty({ icon: 'search', title: 'Pessoa não encontrada', action: { label: 'Voltar', onClick: function () { AX.nav('#/people'); } } })); return; }
     if (lastKey !== 'p' + p.id) { tab = 'deals'; lastKey = 'p' + p.id; }
     var org = q.org(p.orgId);
     var deals = S.s.deals.filter(function (d) { return d.personId === p.id; }).sort(function (a, b) { return a.status === b.status ? 0 : a.status === 'open' ? -1 : 1; });
@@ -120,7 +120,7 @@
               { label: 'Editar pessoa', icon: 'pencil', onClick: function () { AX.forms.person({ person: p }); } },
               { sep: true },
               { label: 'Excluir pessoa', icon: 'trash', danger: true, onClick: function () {
-                ui.confirm({ title: 'Excluir pessoa', message: 'Excluir “' + p.name + '”? Os negócios vinculados permanecem, sem contato.', confirmText: 'Excluir', danger: true }).then(function (ok) { if (ok) { ui.withUndo('Pessoa excluída', function () { S.deletePerson(p.id); }); location.hash = '#/people'; } });
+                ui.confirm({ title: 'Excluir pessoa', message: 'Excluir “' + p.name + '”? Os negócios vinculados permanecem, sem contato.', confirmText: 'Excluir', danger: true }).then(function (ok) { if (ok) { ui.withUndo('Pessoa excluída', function () { S.deletePerson(p.id); }); AX.nav('#/people'); } });
               } }
             ], { align: 'right' });
           } }, icon('more', 18)))),
@@ -142,7 +142,7 @@
 
   AX.views.org = function (root, params) {
     var o = q.org(params.arg);
-    if (!o) { root.appendChild(ui.empty({ icon: 'search', title: 'Organização não encontrada', action: { label: 'Voltar', onClick: function () { location.hash = '#/orgs'; } } })); return; }
+    if (!o) { root.appendChild(ui.empty({ icon: 'search', title: 'Organização não encontrada', action: { label: 'Voltar', onClick: function () { AX.nav('#/orgs'); } } })); return; }
     if (lastKey !== 'o' + o.id) { tab = 'deals'; lastKey = 'o' + o.id; }
     var people = S.s.persons.filter(function (p) { return p.orgId === o.id; });
     var deals = S.s.deals.filter(function (d) { return d.orgId === o.id; }).sort(function (a, b) { return a.status === b.status ? 0 : a.status === 'open' ? -1 : 1; });
@@ -163,7 +163,7 @@
               { label: 'Editar organização', icon: 'pencil', onClick: function () { AX.forms.org({ org: o }); } },
               { sep: true },
               { label: 'Excluir organização', icon: 'trash', danger: true, onClick: function () {
-                ui.confirm({ title: 'Excluir organização', message: 'Excluir “' + o.name + '”? Pessoas e negócios vinculados permanecem, sem organização.', confirmText: 'Excluir', danger: true }).then(function (ok) { if (ok) { ui.withUndo('Organização excluída', function () { S.deleteOrg(o.id); }); location.hash = '#/orgs'; } });
+                ui.confirm({ title: 'Excluir organização', message: 'Excluir “' + o.name + '”? Pessoas e negócios vinculados permanecem, sem organização.', confirmText: 'Excluir', danger: true }).then(function (ok) { if (ok) { ui.withUndo('Organização excluída', function () { S.deleteOrg(o.id); }); AX.nav('#/orgs'); } });
               } }
             ], { align: 'right' });
           } }, icon('more', 18)))),

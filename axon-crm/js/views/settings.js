@@ -177,8 +177,9 @@
   };
   function exportCsv(key) {
     var def = EXPORTS[key], list = key === 'persons' ? S.s.persons : key === 'orgs' ? S.s.orgs : S.s[key];
-    u.download('axon-' + def.file + '-' + u.today() + '.csv', u.toCSV(def.cols, list), 'text/csv;charset=utf-8');
-    ui.toast(def.label + ' exportados (' + list.length + ')', { kind: 'success' });
+    u.download('axon-' + def.file + '-' + u.today() + '.csv', u.toCSV(def.cols, list), 'text/csv;charset=utf-8').then(function (ok) {
+      if (ok) ui.toast(def.label + ' exportados (' + list.length + ')', { kind: 'success' });
+    });
   }
   function data() {
     var s = S.s, file = h('input', { type: 'file', accept: '.json,application/json', class: 'hidden', 'aria-label': 'Arquivo de backup' });
@@ -199,7 +200,9 @@
     return h('div', { class: 'stack' },
       h('div', { class: 'card' }, h('div', { class: 'card-head' }, icon('download', 16), 'Backup'),
         h('div', { class: 'card-pad stack-sm' },
-          h('p', { class: 'text-2' }, 'Os dados ficam salvos neste navegador (' + kb + ' KB em uso). Exporte um backup com frequência — ele também serve para levar seus dados a outro computador ou navegador.'),
+          S.mode === 'cloud'
+            ? h('p', { class: 'text-2' }, 'Seus dados ficam salvos na nuvem, na sua conta do Claude (' + kb + ' KB), e acompanham você em qualquer aparelho. Mesmo assim, exporte uma cópia de vez em quando — por exemplo, antes de mudanças grandes.')
+            : h('p', { class: 'text-2' }, 'Os dados ficam salvos neste navegador (' + kb + ' KB em uso). Exporte um backup com frequência — ele também serve para levar seus dados a outro computador ou navegador.'),
           h('p', { class: 'muted' }, s.lastBackupAt ? 'Último backup: ' + u.fmtDate(s.lastBackupAt) + ' às ' + u.fmtTime(s.lastBackupAt) + '.' : 'Nenhum backup exportado ainda.'),
           h('div', { class: 'toolbar' }, h('button', { class: 'btn primary', type: 'button', onclick: AX.exportBackup }, icon('download', 15), 'Exportar backup (JSON)'),
             h('button', { class: 'btn', type: 'button', onclick: function () { file.click(); } }, icon('upload', 15), 'Restaurar backup…'), file))),

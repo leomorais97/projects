@@ -25,9 +25,9 @@
     var card = h('div', {
       class: 'deal-card' + (rot ? ' rotting' : ''), draggable: 'true', tabindex: 0, role: 'button', dataset: { id: d.id },
       'aria-label': d.title + ', ' + u.money(d.value),
-      onclick: function () { location.hash = '#/deal/' + d.id; },
+      onclick: function () { AX.nav('#/deal/' + d.id); },
       onkeydown: function (e) {
-        if (e.key === 'Enter') { location.hash = '#/deal/' + d.id; }
+        if (e.key === 'Enter') { AX.nav('#/deal/' + d.id); }
         else if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
           e.preventDefault();
           var si = q.stageInfo(d.stageId), ni = si.index + (e.key === 'ArrowRight' ? 1 : -1), tgt = si.pipeline.stages[ni];
@@ -148,7 +148,7 @@
     return h('div', { class: 'list-scroll', dataset: { scroll: 'list' } }, ui.dataTable({
       columns: cols, rows: rows, sort: listSort, tableClass: 'nowrap',
       onSort: function (k) { listSort = ui.nextSort(listSort, k); AX.rerender(); },
-      onRow: function (d) { location.hash = '#/deal/' + d.id; },
+      onRow: function (d) { AX.nav('#/deal/' + d.id); },
       empty: ui.empty({ icon: 'dollar', title: 'Nenhum negócio aqui', text: 'Ajuste os filtros ou crie um novo negócio.' })
     }));
   }
@@ -174,7 +174,7 @@
 
     var plBtn = h('button', { class: 'btn', type: 'button', onclick: function (e) {
       var items = s.pipelines.map(function (p) { return { label: p.name, selected: p.id === pl.id, onClick: function () { S.prefs.set('pipelineId', p.id); AX.rerender(); } }; });
-      items.push({ sep: true }, { label: 'Gerenciar pipelines', icon: 'settings', onClick: function () { location.hash = '#/settings/pipelines'; } });
+      items.push({ sep: true }, { label: 'Gerenciar pipelines', icon: 'settings', onClick: function () { AX.nav('#/settings/pipelines'); } });
       ui.menu(e.currentTarget, items);
     } }, icon('kanban', 16), pl.name, icon('chevron-down', 14));
 
